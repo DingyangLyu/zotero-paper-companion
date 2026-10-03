@@ -93,7 +93,7 @@
     const errors=(async()=>{while(await process.stderr.readString()){};})().catch(()=>{});
     try{
       if(signal?.aborted)abort();
-      await process.stdin.write(JSON.stringify({id:1,method:'initialize',params:{clientInfo:{name:'paper_companion',title:'Paper Companion',version:'0.1.3'}}})+'\n');
+      await process.stdin.write(JSON.stringify({id:1,method:'initialize',params:{clientInfo:{name:'paper_companion',title:'Paper Companion',version:'0.1.4'}}})+'\n');
       const models=await pending;if(!models.length)throw Error('Codex 没有返回可选模型');return models;
     }finally{win.clearTimeout(timer);signal?.removeEventListener('abort',abort);stop();await Promise.allSettled([output,errors,process.wait()]);}
   }

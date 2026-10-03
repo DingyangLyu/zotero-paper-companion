@@ -25,9 +25,10 @@ var PaperCompanionPlugin = {
     const style=win.document.createElementNS('http://www.w3.org/1999/xhtml','style');style.textContent=this.styles;win.document.documentElement.append(style);
     this.windows.set(win,{style});
   },
-  removeFromWindow(win){for(const [body,v] of this.views)if(v.win===win)this.destroyView(body);this.windows.get(win)?.style.remove();win.document.l10n?.removeResourceIds(['paper-companion.ftl']);this.windows.delete(win);},
+  removeFromWindow(win){this.popupUI?.removeFromWindow(win);for(const [body,v] of this.views)if(v.win===win)this.destroyView(body);this.windows.get(win)?.style.remove();win.document.l10n?.removeResourceIds(['paper-companion.ftl']);this.windows.delete(win);},
   element(doc,tag,cls,text) {const e=doc.createElementNS('http://www.w3.org/1999/xhtml',tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;},
   button(doc,text,action,cls) {const b=this.element(doc,'button',cls,text);b.type='button';b.addEventListener('click',action);return b;},
+  copyText(text){Cc['@mozilla.org/widget/clipboardhelper;1'].getService(Ci.nsIClipboardHelper).copyString(text);},
   render({doc,body}) {
     const reader=PaperNative.getReader(body);
     if(!reader || !Zotero.Items.get(reader.itemID)?.isPDFAttachment()){this.destroyView(body);body.textContent='请在 Zotero 标签页中打开 PDF。';return;}
@@ -65,7 +66,7 @@ var PaperCompanionPlugin = {
     root.append(v.title,top,v.settingsBox,v.selection,contextDetails,v.messages,v.input,actions,v.status,notice);body.append(root);this.views.set(body,v);
     v.engines.addEventListener('change',()=>{if(v.busy)return;v.engineID=v.engines.value;v.model.value=PaperNative.configs().find(c=>c.id===v.engineID)?.model || '';Zotero.Prefs.set(PaperNative.PREFIX+'defaultEngine',v.engineID,true);this.modelOptions(v);this.load(v);});
     v.model.addEventListener('change',()=>{const configs=PaperNative.configs();const c=configs.find(c=>c.id===v.engineID);if(c){c.model=v.model.value.trim();c.modelEffort=c.models?.find(m=>m.id===c.model)?.effort || '';PaperNative.saveConfigs(configs);this.modelOptions(v);}});
-    this.paintSelection(v);this.paintHistory(v);this.load(v).then(()=>{if(this.pendingSelection?.tabID===v.tabID&&this.current(v)){const kind=this.pendingSelection.kind;this.pendingSelection=null;if(kind==='translate')this.send(v,kind);else{v.input.value='请解释所选内容，说明它在论文中的含义。';v.input.focus();}}});
+    this.paintSelection(v);this.paintHistory(v);this.load(v).then(()=>{if(this.pendingSelection?.tabID===v.tabID&&this.current(v)){const kind=this.pendingSelection.kind;this.pendingSelection=null;if(kind==='settings')this.settings(v);else{v.input.value='请解释所选内容，说明它在论文中的含义。';v.input.focus();}}});
   },
   current(v) {return !v.destroyed && !v.win.closed && this.views.get(v.body)===v && Zotero.Reader.getByTabID(v.tabID)?.itemID===v.itemID;},
   async load(v) {
@@ -154,16 +155,16 @@ var PaperCompanionPlugin = {
   selectionPopup({reader,doc,params,append}) {
     if(!reader.tabID || Zotero.Reader.getByTabID(reader.tabID)?.itemID!==reader.itemID)return;
     const quote=PaperCore.selection(params.annotation,reader.itemID);if(!quote)return;
-    const box=this.element(doc,'div');box.style.cssText='display:flex;gap:6px;padding:5px';
-    const action=kind=>{
+    const action=settings=>{
       if(Zotero.Reader.getByTabID(reader.tabID)?.itemID!==quote.itemID)return;
       this.drafts.set(quote.itemID,quote);
       const views=[...this.views.values()].filter(v=>v.itemID===quote.itemID&&v.tabID===reader.tabID);
-      for(const v of views){if(v.busy)continue;v.quote=quote;this.paintSelection(v);if(kind==='translate')this.send(v,kind);else{v.input.value='请解释所选内容，说明它在论文中的含义。';v.input.focus();}}
-      if(!views.length)this.pendingSelection={tabID:reader.tabID,kind};
+      for(const v of views){if(v.busy)continue;v.quote=quote;this.paintSelection(v);if(settings){if(v.settingsBox.hidden)this.settings(v);}else{v.input.value='请解释所选内容，说明它在论文中的含义。';v.input.focus();}}
+      if(!views.length)this.pendingSelection={tabID:reader.tabID,kind:settings?'settings':'qa'};
       this.openPane(reader);
     };
-    box.append(this.button(doc,'翻译 · 论文助手',()=>action('translate')),this.button(doc,'提问 · 论文助手',()=>action('qa')));append(box);
+    this.popupUI ||= new PaperPopup(this);
+    this.popupUI.create({reader,doc,quote,append,onQA:()=>action(false),onSettings:()=>action(true)});
   },
   openPane(reader) {
     // item-details is Zotero's native pane host; tab mapping is rechecked before
@@ -215,5 +216,5 @@ var PaperCompanionPlugin = {
     const radiusLabel=this.element(doc,'label',null,'附近段落');const radius=this.element(doc,'select');for(const n of [1,2]){const o=this.element(doc,'option',null,'选区所在段落 + 前后各 '+n+' 段');o.value=String(n);radius.append(o);}radius.value=String(Zotero.Prefs.get(PaperNative.PREFIX+'contextRadius',true) || 1);radius.addEventListener('change',()=>Zotero.Prefs.set(PaperNative.PREFIX+'contextRadius',Number(radius.value),true));radiusLabel.append(radius);v.settingsBox.append(languageLabel,radiusLabel,this.element(doc,'div','pc-muted','本地引擎使用它自身的登录与 API 配置。自定义接口密钥保存于 Zotero 的 Login Manager，不写进聊天记录。'));
   },
   destroyView(body){const v=this.views.get(body);if(!v)return;v.destroyed=true;v.serial++;v.controller?.abort();v.modelController?.abort();if(v.renderTimer)v.win.clearTimeout(v.renderTimer);this.views.delete(body);},
-  async shutdown(){for(const body of [...this.views.keys()])this.destroyView(body);if(this.paneID)Zotero.ItemPaneManager.unregisterSection(this.paneID);Zotero.Reader.unregisterEventListener('renderTextSelectionPopup',this.selectionHandler);for(const win of [...this.windows.keys()])this.removeFromWindow(win);this.drafts.clear();if(Zotero.PaperCompanion===this)delete Zotero.PaperCompanion;this.initialized=false;}
+  async shutdown(){this.popupUI?.shutdown();this.popupUI=null;for(const body of [...this.views.keys()])this.destroyView(body);if(this.paneID)Zotero.ItemPaneManager.unregisterSection(this.paneID);Zotero.Reader.unregisterEventListener('renderTextSelectionPopup',this.selectionHandler);for(const win of [...this.windows.keys()])this.removeFromWindow(win);this.drafts.clear();if(Zotero.PaperCompanion===this)delete Zotero.PaperCompanion;this.initialized=false;}
 };
