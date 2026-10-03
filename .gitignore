@@ -1,0 +1,17 @@
+node_modules/
+.DS_Store
+*.log
+.env
+.env.*
+dist/*
+!dist/paper-companion-0.1.3.xpi
+!dist/SHA256SUMS
+# Local Zotero diagnostics and installation helpers
+scripts/native-probe.js
+scripts/ui-diagnostic.js
+scripts/reveal-chat.js
+scripts/install-upgrade.js
+scripts/repair-install.js
+scripts/ui-smoke.js
+scripts/real-reading-test.js
+scripts/finish-reading-check.js

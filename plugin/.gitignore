@@ -1,0 +1,3 @@
+dist/
+*.xpi
+.DS_Store
