@@ -37,50 +37,63 @@ var PaperCompanionPlugin = {
     const win=doc.defaultView;
     const v={doc,body,win,itemID:reader.itemID,tabID:reader.tabID,serial:0,history:[],loaded:false,quote:this.drafts.get(reader.itemID) || null,context:[],pageCount:0,busy:false,destroyed:false,controller:null,engineID:Zotero.Prefs.get(PaperNative.PREFIX+'defaultEngine',true) || 'codex'};
     const root=this.element(doc,'div','pc-root');v.root=root;
-    v.title=this.element(doc,'div','pc-title','论文助手');
+    const heading=this.element(doc,'div','pc-heading');
+    v.title=this.element(doc,'div','pc-paper-title','论文助手');
     const top=this.element(doc,'div','pc-top');
     v.engines=this.element(doc,'select');v.engines.setAttribute('aria-label','选择引擎');
     for(const config of PaperNative.configs()){const o=this.element(doc,'option',null,config.name);o.value=config.id;v.engines.append(o);}v.engines.value=v.engineID;if(!v.engines.value)v.engines.value='codex';v.engineID=v.engines.value;
-    v.model=this.element(doc,'input');v.model.placeholder='模型（留空使用引擎默认值）';v.model.setAttribute('aria-label','模型');
+    v.model=this.element(doc,'input');v.model.placeholder='输入模型名称，留空沿用引擎默认';v.model.setAttribute('aria-label','自定义模型名称');
     v.model.value=PaperNative.configs().find(c=>c.id===v.engineID)?.model || '';
-    v.settingsButton=this.button(doc,'配置',()=>this.settings(v));
-    v.modelMenu=this.element(doc,'select');v.modelMenu.setAttribute('aria-label','可用 Codex 模型');
-    v.refreshModels=this.button(doc,'刷新模型',()=>this.readModels(v));
-    top.append(v.engines,v.settingsButton,v.model,v.modelMenu,v.refreshModels);this.modelOptions(v);
-    v.modelMenu.addEventListener('change',()=>{if(!v.modelMenu.value)return;v.model.value=v.modelMenu.value;v.model.dispatchEvent(new v.win.Event('change',{bubbles:true}));});
+    v.settingsButton=this.button(doc,'配置',()=>this.settings(v),'pc-ghost');
+    v.modelMenu=this.element(doc,'select');v.modelMenu.setAttribute('aria-label','选择模型');
+    v.refreshModels=this.button(doc,'↻',()=>this.readModels(v),'pc-icon-button');v.refreshModels.title='读取本机 Codex 的可用模型';v.refreshModels.setAttribute('aria-label','刷新 Codex 模型');
+    const field=(label,control)=>{const box=this.element(doc,'label','pc-field');box.append(this.element(doc,'span','pc-field-label',label));const wrap=this.element(doc,'span','pc-select-wrap');wrap.append(control);box.append(wrap);return box;};
+    const engineRow=this.element(doc,'div','pc-control-row'),modelRow=this.element(doc,'div','pc-control-row');
+    engineRow.append(field('引擎',v.engines),v.settingsButton);modelRow.append(field('模型',v.modelMenu),v.refreshModels);
+    v.modelBox=this.element(doc,'label','pc-model-editor');v.modelBox.hidden=true;v.modelBox.append(this.element(doc,'span','pc-field-label','自定义模型'),v.model);
+    top.append(engineRow,modelRow,v.modelBox);this.modelOptions(v);
+    v.modelMenu.addEventListener('change',()=>{if(v.modelMenu.value==='__custom__'){v.modelBox.hidden=false;v.model.focus();return;}v.model.value=v.modelMenu.value;v.model.dispatchEvent(new v.win.Event('change',{bubbles:true}));});
+    v.model.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();v.model.blur();}});
     v.settingsBox=this.element(doc,'div','pc-settings');v.settingsBox.hidden=true;
     v.selection=this.element(doc,'div','pc-selection');v.selection.setAttribute('aria-label','选中的论文原文');
-    const contextDetails=this.element(doc,'details');contextDetails.append(this.element(doc,'summary',null,'本次引用的上下文'));v.context=this.element(doc,'div','pc-context');contextDetails.append(v.context);
+    v.contextDetails=this.element(doc,'details','pc-context-details');const contextSummary=this.element(doc,'summary');v.contextMeta=this.element(doc,'span','pc-context-meta');contextSummary.append(this.element(doc,'span',null,'本次引用的上下文'),v.contextMeta);v.contextDetails.append(contextSummary);v.context=this.element(doc,'div','pc-context');v.contextDetails.append(v.context);this.paintContext(v);
     v.messages=this.element(doc,'div','pc-history');v.messages.setAttribute('aria-label','论文对话');
     v.input=this.element(doc,'textarea','pc-composer');v.input.placeholder='针对选区提问，或直接询问这篇论文…';v.input.setAttribute('aria-label','论文问题');
     v.input.addEventListener('keydown',e=>{if((e.metaKey || e.ctrlKey) && e.key==='Enter'){e.preventDefault();this.send(v,'qa');}});
-    const actions=this.element(doc,'div','pc-actions');
+    const compose=this.element(doc,'div','pc-compose'),actions=this.element(doc,'div','pc-actions');
     v.translate=this.button(doc,'翻译选区',()=>this.send(v,'translate'));
     v.ask=this.button(doc,'发送',()=>this.send(v,'qa'),'pc-primary');
     v.stop=this.button(doc,'停止',()=>v.controller?.abort());v.stop.disabled=true;
     v.clear=this.button(doc,'取消选区',()=>{v.quote=null;this.drafts.delete(v.itemID);this.paintSelection(v);});
-    v.newChat=this.button(doc,'新对话',async()=>{if(v.busy)return;v.history=[];v.quote=null;this.drafts.delete(v.itemID);this.paintSelection(v);this.paintHistory(v);if(v.identity)try{await PaperNative.saveHistory(v.identity.key,v.engineID,v.history);}catch(e){this.status(v,e.message,true);}});
-    actions.append(v.translate,v.ask,v.stop,v.clear,v.newChat);
+    v.newChat=this.button(doc,'＋ 新对话',async()=>{if(v.busy)return;v.history=[];v.quote=null;this.drafts.delete(v.itemID);this.paintSelection(v);this.paintContext(v);this.paintHistory(v);if(v.identity)try{await PaperNative.saveHistory(v.identity.key,v.engineID,v.history);}catch(e){this.status(v,e.message,true);}},'pc-ghost');
+    heading.append(v.title,v.newChat);
+    actions.append(v.translate,v.clear,this.element(doc,'span','pc-action-spacer'),v.stop,v.ask);compose.append(v.input,actions);v.ask.title='发送（⌘ / Ctrl + Enter）';
     v.status=this.element(doc,'div','pc-status');v.status.setAttribute('role','status');
-    const notice=this.element(doc,'div','pc-muted','点击发送后，选区和引用段落将交给当前引擎；聊天记录保存在本机。');
-    root.append(v.title,top,v.settingsBox,v.selection,contextDetails,v.messages,v.input,actions,v.status,notice);body.append(root);this.views.set(body,v);
-    v.engines.addEventListener('change',()=>{if(v.busy)return;v.engineID=v.engines.value;v.model.value=PaperNative.configs().find(c=>c.id===v.engineID)?.model || '';Zotero.Prefs.set(PaperNative.PREFIX+'defaultEngine',v.engineID,true);this.modelOptions(v);this.load(v);});
+    const chat=this.element(doc,'div','pc-chat');chat.append(v.contextDetails,v.messages);
+    root.append(heading,top,v.settingsBox,v.selection,v.status,chat,compose);body.append(root);this.views.set(body,v);
+    v.engines.addEventListener('change',()=>{if(v.busy)return;v.engineID=v.engines.value;v.model.value=PaperNative.configs().find(c=>c.id===v.engineID)?.model || '';Zotero.Prefs.set(PaperNative.PREFIX+'defaultEngine',v.engineID,true);this.paintContext(v);this.modelOptions(v);this.load(v);});
     v.model.addEventListener('change',()=>{const configs=PaperNative.configs();const c=configs.find(c=>c.id===v.engineID);if(c){c.model=v.model.value.trim();c.modelEffort=c.models?.find(m=>m.id===c.model)?.effort || '';PaperNative.saveConfigs(configs);this.modelOptions(v);}});
     this.paintSelection(v);this.paintHistory(v);this.load(v).then(()=>{if(this.pendingSelection?.tabID===v.tabID&&this.current(v)){const kind=this.pendingSelection.kind;this.pendingSelection=null;if(kind==='settings')this.settings(v);else{v.input.value='请解释所选内容，说明它在论文中的含义。';v.input.focus();}}});
   },
   current(v) {return !v.destroyed && !v.win.closed && this.views.get(v.body)===v && Zotero.Reader.getByTabID(v.tabID)?.itemID===v.itemID;},
   async load(v) {
     const serial=++v.serial;const id=v.engineID;v.loaded=false;this.busyControls(v);
-    try{const identity=await PaperNative.paperIdentity(v.itemID);const history=await PaperNative.loadHistory(identity.key,id);if(!this.current(v)||serial!==v.serial||id!==v.engineID)return;v.identity=identity;v.history=history;v.loaded=true;v.title.textContent=identity.title;this.paintHistory(v);this.busyControls(v);this.status(v,'就绪');}
+    try{const identity=await PaperNative.paperIdentity(v.itemID);const history=await PaperNative.loadHistory(identity.key,id);if(!this.current(v)||serial!==v.serial||id!==v.engineID)return;v.identity=identity;v.history=history;v.loaded=true;v.title.textContent=identity.title;v.title.title=identity.title;this.paintHistory(v);this.busyControls(v);this.status(v,'就绪');}
     catch(e){if(this.current(v))this.status(v,e.message,true);}
   },
-  status(v,text,error=false){if(v.destroyed)return;v.status.textContent=PaperCore.redact(text).slice(0,1200);v.status.dataset.error=String(error);},
-  paintSelection(v) {v.selection.textContent=v.quote?`PDF 第 ${v.quote.pageIndex+1} 页${v.quote.pageLabel!==String(v.quote.pageIndex+1)?'（文献页码 '+v.quote.pageLabel+'）':''} · 选区\n${v.quote.text}`:'';v.translate.disabled=v.busy || !v.loaded || !v.quote;v.clear.disabled=v.busy || !v.quote;},
+  status(v,text,error=false){if(v.destroyed)return;v.status.textContent=PaperCore.redact(text).slice(0,1200);v.status.dataset.error=String(error);v.status.hidden=!error&&(text==='就绪'||text.startsWith('完成 ·'));},
+  paintSelection(v) {v.selection.textContent=v.quote?`PDF 第 ${v.quote.pageIndex+1} 页${v.quote.pageLabel!==String(v.quote.pageIndex+1)?'（文献页码 '+v.quote.pageLabel+'）':''} · 选区\n${v.quote.text}`:'';v.translate.hidden=v.clear.hidden=!v.quote;v.translate.disabled=v.busy || !v.loaded || !v.quote;v.clear.disabled=v.busy || !v.quote;},
+  paintContext(v,blocks=[]) {
+    v.context.replaceChildren();v.contextBlocks=blocks;
+    const pages=[...new Set(blocks.map(b=>b.pageIndex+1))];v.contextMeta.textContent=blocks.length?`${blocks.length} 段 · ${pages.length} 页`:'未引用';
+    if(!blocks.length){v.contextDetails.open=false;v.context.append(this.element(v.doc,'p','pc-muted','本轮尚未引用论文段落。'));return;}
+    for(const block of blocks){const article=this.element(v.doc,'div','pc-context-block');const jump=this.button(v.doc,'PDF 第 '+(block.pageIndex+1)+' 页',()=>{if(this.current(v))Zotero.Reader.getByTabID(v.tabID).navigate({pageIndex:block.pageIndex});},'pc-context-page');article.append(jump,this.element(v.doc,'p',null,block.text));v.context.append(article);}
+  },
   paintHistory(v) {
     v.messages.replaceChildren();
     if(!v.history.length){v.messages.append(this.element(v.doc,'div','pc-empty','在论文中划选一个词、一句话或一段文字，然后点击“翻译”或“提问”。\n也可以直接在这里询问论文内容。'));return;}
     for(const message of v.history){const article=this.element(v.doc,'article','pc-message');article.dataset.role=message.role;
-      article.append(this.element(v.doc,'header',null,message.role==='user'?'你':(message.engineName || '论文助手')+(message.status==='partial'?' · 已停止':message.status==='error'?' · 未完成':'')));
+      const header=this.element(v.doc,'header',null,message.role==='user'?'你':(message.engineName || '论文助手')+(message.status==='partial'?' · 已停止':message.status==='error'?' · 未完成':''));if(message.role==='assistant'&&message.model)header.append(this.element(v.doc,'span','pc-message-model',message.model));article.append(header);
       const content=this.element(v.doc,'div');this.drawMessage(v,content,message);article.append(content);v.messages.append(article);
     }
     v.messages.scrollTop=v.messages.scrollHeight;
@@ -114,11 +127,11 @@ var PaperCompanionPlugin = {
       let blocks;
       if(quote){const context=PaperCore.contextFor(paper.blocks,quote,Zotero.Prefs.get(PaperNative.PREFIX+'contextRadius',true));blocks=context.blocks;if(!context.found){this.status(v,'未定位到选区段落，仅使用所选原文；请核对选区或 PDF 文本层');blocks=[{text:quote.text,pageIndex:quote.pageIndex}];}}
       else blocks=PaperCore.retrieve(paper.blocks,question);
-      v.context.replaceChildren();for(const block of blocks){const p=this.element(v.doc,'p',null,`[p.${block.pageIndex+1}] ${block.text}`);v.context.append(p);}
+      this.paintContext(v,blocks);
       const messages=PaperCore.messages({kind,question:question || '请解释这段原文',quote,blocks,title:identity.title,language:Zotero.Prefs.get(PaperNative.PREFIX+'language',true),history:v.history});
       const sources=[...new Set(blocks.map(b=>b.pageIndex+1))];
       v.history.push({role:'user',text:kind==='translate'?`翻译：${quote.text}`:(quote?`> ${quote.text}\n\n`:'')+(question || '解释选区'),status:'complete',sources,pageCount:paper.pageCount});
-      response={role:'assistant',text:'',status:'pending',engineName:config.name,sources,pageCount:paper.pageCount};v.history.push(response);appended=true;v.input.value='';this.paintHistory(v);responseNode=v.messages.lastElementChild.lastElementChild;
+      response={role:'assistant',text:'',status:'pending',engineName:config.name,model:config.model || '',sources,pageCount:paper.pageCount};v.history.push(response);appended=true;v.input.value='';this.paintHistory(v);responseNode=v.messages.lastElementChild.lastElementChild;
       this.status(v,'正在使用 '+config.name+(config.model?' · '+config.model:'')+'…');
       const options={signal:v.controller.signal,onText:text=>{response.text=text;if(this.current(v))this.scheduleMessage(v,responseNode,response);},fetch:v.win.fetch.bind(v.win),TextDecoder:v.win.TextDecoder};
       const result=config.type==='api'?await PaperEngines.runAPI(config,messages,{...options,key:await PaperNative.keyFor(config.id)}):await PaperEngines.runCLI(config,messages,{...options,workdir:await PaperNative.workdir(identity.key),path:await this.runtimePath(config)});
@@ -134,14 +147,16 @@ var PaperCompanionPlugin = {
   },
   scheduleMessage(v,node,message){if(v.renderTimer)return;v.renderTimer=v.win.setTimeout(()=>{v.renderTimer=null;if(this.current(v)){const selection=v.win.getSelection();if(selection&&!selection.isCollapsed&&v.messages.contains(selection.anchorNode))return;const nearBottom=v.messages.scrollHeight-v.messages.scrollTop-v.messages.clientHeight<100;this.drawMessage(v,node,message);if(nearBottom)v.messages.scrollTop=v.messages.scrollHeight;}},60);},
   async runtimePath(config) {const nodes=await PaperNative.executablePaths('node');return [PathUtils.parent(config.path),...nodes.map(p=>PathUtils.parent(p)),Services.env.get('PATH'),'/opt/homebrew/bin','/usr/local/bin','/usr/bin','/bin'].filter(Boolean).join(':');},
-  busyControls(v){for(const e of [v.engines,v.model,v.modelMenu,v.refreshModels,v.settingsButton,v.ask,v.newChat])e.disabled=v.busy || v.detectingModels || (!v.loaded && e!==v.settingsButton);v.stop.disabled=!v.busy;this.paintSelection(v);},
+  busyControls(v){for(const e of [v.engines,v.model,v.modelMenu,v.refreshModels,v.settingsButton,v.ask,v.newChat])e.disabled=v.busy || v.detectingModels || (!v.loaded && e!==v.settingsButton);v.stop.hidden=!v.busy;v.ask.hidden=v.busy;v.stop.disabled=!v.busy;v.root.setAttribute('aria-busy',String(v.busy));this.paintSelection(v);},
   modelOptions(v) {
     if(!v.modelMenu)return;
     const config=PaperNative.configs().find(c=>c.id===v.engineID),codex=v.engineID==='codex';
-    v.modelMenu.hidden=!codex;v.refreshModels.hidden=!codex;v.modelMenu.replaceChildren();
-    const initial=this.element(v.doc,'option',null,config?.models?.length?'选择可用模型…':'点击“刷新模型”读取本机目录');initial.value='';v.modelMenu.append(initial);
+    v.modelMenu.hidden=false;v.refreshModels.hidden=!codex;v.modelMenu.replaceChildren();v.modelBox.hidden=true;
+    const initial=this.element(v.doc,'option',null,'引擎默认');initial.value='';v.modelMenu.append(initial);
     for(const model of config?.models || []){const option=this.element(v.doc,'option',null,model.name+'（'+model.id+'）');option.value=model.id;v.modelMenu.append(option);}
-    v.modelMenu.value=config?.models?.some(m=>m.id===v.model.value)?v.model.value:'';
+    if(v.model.value&&!config?.models?.some(m=>m.id===v.model.value)){const option=this.element(v.doc,'option',null,v.model.value);option.value=v.model.value;v.modelMenu.append(option);}
+    const custom=this.element(v.doc,'option',null,'自定义模型…');custom.value='__custom__';v.modelMenu.append(custom);v.modelMenu.value=v.model.value;
+    v.modelMenu.title=v.model.value || '沿用 '+(config?.name || '当前引擎')+' 自身配置中的默认模型';
   },
   async readModels(v) {
     if(v.busy||v.detectingModels||!this.current(v)||v.engineID!=='codex')return;
@@ -206,7 +221,7 @@ var PaperCompanionPlugin = {
           if(path){if(!PathUtils.isAbsolute(path.value.trim()))throw new Error('请选择可执行文件的绝对路径');next.path=path.value.trim();}
           if(url){next.baseURL=url.value.trim();next.protocol=protocol.value;PaperEngines.endpoint(next);}
           const index=configs.findIndex(c=>c.id===selected.id);configs[index]=next;PaperNative.saveConfigs(configs);if(key?.value.trim()){await PaperNative.saveKey(next.id,key.value.trim());key.value='';}
-          v.engines.replaceChildren();for(const c of configs){const o=this.element(doc,'option',null,c.name);o.value=c.id;v.engines.append(o);}v.engines.value=v.engineID;v.model.value=configs.find(c=>c.id===v.engineID)?.model || '';this.status(v,'配置已保存');
+          v.engines.replaceChildren();for(const c of configs){const o=this.element(doc,'option',null,c.name);o.value=c.id;v.engines.append(o);}v.engines.value=v.engineID;v.model.value=configs.find(c=>c.id===v.engineID)?.model || '';this.modelOptions(v);this.status(v,'配置已保存');
         }catch(e){this.status(v,e.message,true);}
       },'pc-primary');fields.append(apply);
       if(key)fields.append(this.button(doc,'清除已保存的 API Key',async()=>{await PaperNative.saveKey(selected.id,'');this.status(v,'已清除当前接口的密钥');}));

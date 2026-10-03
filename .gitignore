@@ -4,7 +4,7 @@ node_modules/
 .env
 .env.*
 dist/*
-!dist/paper-companion-0.1.5.xpi
+!dist/paper-companion-0.1.6.xpi
 !dist/SHA256SUMS
 # Local Zotero diagnostics and installation helpers
 scripts/native-probe.js
