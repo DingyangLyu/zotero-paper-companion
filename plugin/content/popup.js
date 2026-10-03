@@ -10,15 +10,20 @@
       }},['tab'],'paper-companion-popup');
     }
     current(s) {
-      return !s.disposed&&!s.win.closed&&this.states.get(s.tabID)===s&&
+      return !s.disposed&&!s.win.closed&&!s.contentWindow.closed&&this.states.get(s.tabID)===s&&
         g.Zotero.Reader.getByTabID(s.tabID)?.itemID===s.quote.itemID&&
         (!s.owner?.Zotero_Tabs||s.owner.Zotero_Tabs.selectedID===s.tabID);
     }
     alive(s) {return this.current(s)&&s.root.isConnected;}
     create({reader,doc,quote,append,onQA,onSettings}) {
       this.dispose(this.states.get(reader.tabID));
-      const p=this.plugin,win=doc.defaultView;
-      const s={tabID:reader.tabID,quote,doc,win,owner:g.Zotero.getMainWindows().find(w=>[...w.document.querySelectorAll('item-details')].some(d=>d.tabID===reader.tabID)),disposed:false,busy:false,text:'',sources:[],pageCount:0};
+      const p=this.plugin,contentWindow=doc.defaultView;
+      const owner=g.Zotero.getMainWindows().find(w=>[...w.document.querySelectorAll('item-details')].some(d=>d.tabID===reader.tabID));
+      // The Reader event document is wrapped across a Gecko compartment.
+      // Its DOM is usable, but its constructors cannot read privileged option
+      // dictionaries. Use the main chrome window for observers, IO and signals.
+      const win=owner || g.Zotero.getMainWindow();
+      const s={tabID:reader.tabID,quote,doc,win,contentWindow,owner,disposed:false,busy:false,text:'',sources:[],pageCount:0};
       this.states.set(s.tabID,s);
       s.root=p.element(doc,'section','pc-inline');s.root.setAttribute('aria-label','论文选区翻译');
       const style=p.element(doc,'style');style.textContent=p.styles || '';s.root.append(style);
@@ -41,7 +46,7 @@
       // The reader's PDF selection handlers must not receive clicks or drags
       // inside the translation; native selection/copy in the result still works.
       for(const event of ['pointerdown','pointerup','mousedown','mouseup','dblclick','keydown','dragstart'])s.root.addEventListener(event,e=>e.stopPropagation());
-      s.unload=()=>this.dispose(s);win.addEventListener('unload',s.unload,{once:true});
+      s.unload=()=>this.dispose(s);contentWindow.addEventListener('unload',s.unload);
       s.observer=new win.MutationObserver(()=>{
         if(s.root.isConnected){s.connected=true;if(!this.current(s))this.dispose(s);}
         else if(s.connected)this.dispose(s);
@@ -58,7 +63,7 @@
       if(!this.alive(s))return;
       const host=s.root.closest('.selection-popup');if(!host)return;
       const rect=host.getBoundingClientRect(),bounds=host.parentElement.getBoundingClientRect();
-      const right=Math.min(bounds.right,s.win.innerWidth)-8,bottom=Math.min(bounds.bottom,s.win.innerHeight)-8;
+      const right=Math.min(bounds.right,s.contentWindow.innerWidth)-8,bottom=Math.min(bounds.bottom,s.contentWindow.innerHeight)-8;
       const dx=rect.right>right?right-rect.right:rect.left<bounds.left+8?bounds.left+8-rect.left:0;
       const dy=rect.bottom>bottom?bottom-rect.bottom:rect.top<bounds.top+8?bounds.top+8-rect.top:0;
       // Zotero 10.0.4 uses a CSS translate, not left/top, for ViewPopup.
@@ -116,7 +121,7 @@
       }
     }
     dispose(s) {
-      if(!s||s.disposed)return;s.disposed=true;s.controller?.abort();s.observer?.disconnect();s.resize?.disconnect();s.win.removeEventListener('unload',s.unload);s.win.clearTimeout(s.attachTimer);s.win.clearTimeout(s.renderTimer);
+      if(!s||s.disposed)return;s.disposed=true;s.controller?.abort();s.observer?.disconnect();s.resize?.disconnect();s.contentWindow.removeEventListener('unload',s.unload);s.win.clearTimeout(s.attachTimer);s.win.clearTimeout(s.renderTimer);
       if(s.position){const {host,original,written}=s.position;if(host.style.transform===written)host.style.transform=original;}
       s.root.remove();if(this.states.get(s.tabID)===s)this.states.delete(s.tabID);
     }
