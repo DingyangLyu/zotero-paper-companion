@@ -70,7 +70,7 @@ var PaperCompanionPlugin = {
     actions.append(v.translate,v.clear,this.element(doc,'span','pc-action-spacer'),v.stop,v.ask);compose.append(v.input,actions);v.ask.title='发送（⌘ / Ctrl + Enter）';
     v.status=this.element(doc,'div','pc-status');v.status.setAttribute('role','status');
     const chat=this.element(doc,'div','pc-chat');chat.append(v.contextDetails,v.messages);
-    root.append(heading,top,v.settingsBox,v.selection,v.status,chat,compose);body.append(root);this.views.set(body,v);
+    root.append(heading,top,v.settingsBox,v.selection,v.status,chat,compose);body.append(root);this.views.set(body,v);v.layoutCleanup=PaperLayout.attach(v);
     v.engines.addEventListener('change',()=>{if(v.busy)return;v.engineID=v.engines.value;v.model.value=PaperNative.configs().find(c=>c.id===v.engineID)?.model || '';Zotero.Prefs.set(PaperNative.PREFIX+'defaultEngine',v.engineID,true);this.paintContext(v);this.modelOptions(v);this.load(v);});
     v.model.addEventListener('change',()=>{const configs=PaperNative.configs();const c=configs.find(c=>c.id===v.engineID);if(c){c.model=v.model.value.trim();c.modelEffort=c.models?.find(m=>m.id===c.model)?.effort || '';PaperNative.saveConfigs(configs);this.modelOptions(v);}});
     this.paintSelection(v);this.paintHistory(v);this.load(v).then(()=>{if(this.pendingSelection?.tabID===v.tabID&&this.current(v)){const kind=this.pendingSelection.kind;this.pendingSelection=null;if(kind==='settings')this.settings(v);else{v.input.value='请解释所选内容，说明它在论文中的含义。';v.input.focus();}}});
@@ -186,7 +186,7 @@ var PaperCompanionPlugin = {
     // opening it. Capability-gated fallback, verified only on Zotero 10.0.4.
     for(const win of Zotero.getMainWindows()){
       const details=[...win.document.querySelectorAll('item-details')].find(e=>e.tabID===reader.tabID || e.dataset.tabId===reader.tabID);
-      if(details){const parent=details.closest('context-pane, item-pane');if(parent&&'collapsed' in parent)parent.collapsed=false;const button=[...(details.sidenav?.querySelectorAll('[data-pane]') || [])].find(e=>e.dataset.pane===this.paneID);if(button)button.click();else details.scrollToPane?.(this.paneID,'instant');return;}
+      if(details){const parent=details.closest('context-pane, item-pane');if(parent&&'collapsed' in parent&&parent.collapsed)parent.collapsed=false;if(typeof details.scrollToPane==='function')details.scrollToPane(this.paneID,'instant');else{const button=[...(details.sidenav?.querySelectorAll('[data-pane]') || [])].find(e=>e.dataset.pane===this.paneID);button?.click();}return;}
     }
   },
   settings(v) {
@@ -230,6 +230,6 @@ var PaperCompanionPlugin = {
     const languageLabel=this.element(doc,'label',null,'回答 / 翻译语言');const language=this.element(doc,'input');language.value=Zotero.Prefs.get(PaperNative.PREFIX+'language',true) || '简体中文';language.addEventListener('change',()=>Zotero.Prefs.set(PaperNative.PREFIX+'language',language.value.trim() || '简体中文',true));languageLabel.append(language);
     const radiusLabel=this.element(doc,'label',null,'附近段落');const radius=this.element(doc,'select');for(const n of [1,2]){const o=this.element(doc,'option',null,'选区所在段落 + 前后各 '+n+' 段');o.value=String(n);radius.append(o);}radius.value=String(Zotero.Prefs.get(PaperNative.PREFIX+'contextRadius',true) || 1);radius.addEventListener('change',()=>Zotero.Prefs.set(PaperNative.PREFIX+'contextRadius',Number(radius.value),true));radiusLabel.append(radius);v.settingsBox.append(languageLabel,radiusLabel,this.element(doc,'div','pc-muted','本地引擎使用它自身的登录与 API 配置。自定义接口密钥保存于 Zotero 的 Login Manager，不写进聊天记录。'));
   },
-  destroyView(body){const v=this.views.get(body);if(!v)return;v.destroyed=true;v.serial++;v.controller?.abort();v.modelController?.abort();if(v.renderTimer)v.win.clearTimeout(v.renderTimer);this.views.delete(body);},
+  destroyView(body){const v=this.views.get(body);if(!v)return;v.destroyed=true;v.serial++;v.controller?.abort();v.modelController?.abort();v.layoutCleanup?.();if(v.renderTimer)v.win.clearTimeout(v.renderTimer);this.views.delete(body);},
   async shutdown(){this.popupUI?.shutdown();this.popupUI=null;for(const body of [...this.views.keys()])this.destroyView(body);if(this.paneID)Zotero.ItemPaneManager.unregisterSection(this.paneID);Zotero.Reader.unregisterEventListener('renderTextSelectionPopup',this.selectionHandler);for(const win of [...this.windows.keys()])this.removeFromWindow(win);this.drafts.clear();if(Zotero.PaperCompanion===this)delete Zotero.PaperCompanion;this.initialized=false;}
 };
