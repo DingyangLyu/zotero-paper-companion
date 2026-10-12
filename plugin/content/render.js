@@ -1,7 +1,9 @@
 (function(g) {
   'use strict';
   const NS='http://www.w3.org/1999/xhtml', MATH='http://www.w3.org/1998/Math/MathML';
-  const ALLOWED=new Set('p div span strong em del s code pre blockquote ul ol li h1 h2 h3 h4 hr br table thead tbody tr th td a'.split(' '));
+  const ALLOWED=new Set('p div span strong em del s code pre blockquote ul ol li h1 h2 h3 h4 h5 h6 hr br sub sup table thead tbody tr th td a'.split(' '));
+  // Display width in Latin-character units: CJK and full-width forms count as two.
+  const visualLength=text=>{let n=0;for(const c of text.trim())n+=c.codePointAt(0)>0x2e7f?2:1;return n;};
   function protectMath(text) {
     const math=[];
     // Fenced and inline code are matched first so dollars in code stay literal.
@@ -31,8 +33,10 @@
   }
   function render(doc,parent,text,{pageCount=0,sources=[],onPage=()=>{},onExternal=()=>{}}={}) {
     const {source,math}=protectMath(String(text).slice(0,200000));
-    const template=doc.createElementNS(NS,'template');
-    template.innerHTML=g.marked.parse(source,{gfm:true,breaks:true});
+    // Parse as HTML even though Zotero's main window is an XML document: there
+    // innerHTML uses the XML parser and throws on marked's <br>, <hr>, &nbsp;…
+    // A DOMParser document is inert (no scripts, no loads); we only read it.
+    const parsed=new doc.defaultView.DOMParser().parseFromString('<!doctype html><body>'+g.marked.parse(source,{gfm:true,breaks:true}),'text/html');
     const fragment=doc.createDocumentFragment();
     const addText=(target,value,code)=>{
       if(code){target.append(doc.createTextNode(value));return;}
@@ -60,6 +64,7 @@
       }
       if(!ALLOWED.has(name)){if(name==='img')target.append(doc.createTextNode(node.getAttribute('alt') || '[图片]'));return;}
       const element=doc.createElementNS(NS,name);target.append(element);
+      if((name==='th' || name==='td') && ['left','center','right'].includes(node.getAttribute('align')))element.style.textAlign=node.getAttribute('align');
       if(name==='a') {
         const link=g.PCCore.parseLink(node.getAttribute('href'),pageCount,sources);
         if(link.kind!=='blocked') {
@@ -69,7 +74,20 @@
       }
       for(const child of node.childNodes)copy(child,element,inCode || ['pre','code'].includes(name));
     };
-    for(const child of template.content.childNodes)copy(child,fragment);
+    for(const child of parsed.body.childNodes)copy(child,fragment);
+    // Tables scroll sideways instead of squeezing columns to one character:
+    // short cells never wrap, long cells keep a readable minimum width.
+    for(const table of [...fragment.querySelectorAll('table')]) {
+      const wrap=doc.createElementNS(NS,'div');wrap.className='pc-table';
+      table.replaceWith(wrap);wrap.append(table);
+      for(const cell of table.querySelectorAll('th,td')) {
+        const length=visualLength(cell.textContent);
+        if(length<=16){cell.classList.add('pc-cell-short');continue;}
+        // Wide enough for about three lines (one CJK character ≈ 2 units ≈ 1em).
+        const inner=doc.createElementNS(NS,'div');inner.className='pc-cell';inner.style.minWidth=Math.min(14,Math.max(6,Math.round(length/6)))+'em';
+        inner.append(...cell.childNodes);cell.append(inner);
+      }
+    }
     parent.replaceChildren(fragment);
   }
   const api={protectMath,mathNode,render};g.PCRender=api;if(typeof module!=='undefined')module.exports=api;

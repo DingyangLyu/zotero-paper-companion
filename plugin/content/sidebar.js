@@ -349,7 +349,7 @@
       } catch (e) {
         // Never let one message take the whole conversation down with it.
         this.log('paint-failed', {role: m.role, error: e?.message || String(e)});
-        node.replaceChildren(this.el(v, 'div', 'pc-msg-text', m.text || ''));
+        node.replaceChildren(this.el(v, 'div', 'pc-msg-text pc-raw', m.text || ''));
       }
       return node;
     }
@@ -374,6 +374,7 @@
       } catch (e) {
         this.log('render-failed', {error: e?.message || String(e)});
         node.textContent = m.text || '';
+        node.classList.add('pc-raw');
       }
     }
 

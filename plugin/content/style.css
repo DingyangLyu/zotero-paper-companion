@@ -79,7 +79,7 @@
   overflow: auto;
   font-size: 14px;
   line-height: 1.65;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   user-select: text;
   -moz-user-select: text;
 }
@@ -160,7 +160,7 @@
   height: 28px;
   padding: 2px 22px 2px 8px;
   cursor: pointer;
-  border: 1px solid var(--material-border, #d6d6d6);
+  border: 1px solid var(--color-border, #d6d6d6);
   border-radius: 6px;
   background: var(--material-background, #fff);
   font-size: 12px;
@@ -203,13 +203,15 @@
   padding: 4px 10px;
   font-size: 12px;
   border-radius: 14px;
-  border: 1px solid var(--material-border, #d6d6d6);
+  border: 1px solid var(--color-border, #d6d6d6);
   background: var(--material-background, #fff);
   cursor: pointer;
 }
 .pc-chat .pc-chip:hover { border-color: var(--pc-accent); color: var(--pc-accent); }
 
-.pc-msg { overflow-wrap: anywhere; }
+/* break-word (not anywhere): only breaks words that would overflow, and does
+   not shrink intrinsic widths — tables would otherwise get 1-character columns. */
+.pc-msg { overflow-wrap: break-word; }
 .pc-msg[data-role="user"] {
   align-self: flex-end;
   max-width: 92%;
@@ -229,19 +231,53 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* Fallback when Markdown rendering fails: keep the line breaks at least. */
+.pc-raw { white-space: pre-wrap; }
 .pc-msg-body { user-select: text; -moz-user-select: text; line-height: 1.65; }
 .pc-msg-body > :first-child { margin-top: 0; }
 .pc-msg-body > :last-child { margin-bottom: 0; }
 .pc-msg-body p { margin: 0 0 8px; }
-.pc-msg-body h1, .pc-msg-body h2, .pc-msg-body h3, .pc-msg-body h4 { font-size: 13px; margin: 12px 0 6px; }
+.pc-msg-body h1, .pc-msg-body h2 { font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
+.pc-msg-body h3, .pc-msg-body h4, .pc-msg-body h5, .pc-msg-body h6 { font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
 .pc-msg-body ul, .pc-msg-body ol { margin: 4px 0 8px; padding-left: 20px; }
-.pc-msg-body blockquote { margin: 6px 0; padding-left: 8px; border-left: 2px solid var(--material-border, #ccc); color: var(--fill-secondary, #555); }
-.pc-msg-body pre { overflow: auto; padding: 8px; border-radius: 6px; background: var(--fill-quinary, rgba(0, 0, 0, .05)); white-space: pre; }
-.pc-msg-body code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
-.pc-msg-body table { border-collapse: collapse; display: block; overflow: auto; margin: 6px 0; }
-.pc-msg-body th, .pc-msg-body td { border: 1px solid var(--material-border, #ccc); padding: 3px 6px; }
-.pc-msg-body math[display="block"], .pc-card-body math[display="block"] { display: block; overflow-x: auto; padding: 4px 0; }
+.pc-msg-body li { margin: 3px 0; }
+.pc-msg-body li > p { margin: 0 0 4px; }
+.pc-msg-body li > ul, .pc-msg-body li > ol { margin: 2px 0 4px; }
+.pc-msg-body hr { border: 0; border-top: 1px solid var(--color-border, #ddd); margin: 12px 0; }
+.pc-msg-body blockquote { margin: 6px 0 8px; padding-left: 8px; border-left: 2px solid var(--color-border, #ccc); color: var(--fill-secondary, #555); }
+.pc-msg-body pre { overflow: auto; margin: 6px 0 8px; padding: 8px 10px; border-radius: 6px; background: var(--fill-quinary, rgba(0, 0, 0, .05)); white-space: pre; font-size: 12px; line-height: 1.5; }
+.pc-msg-body code, .pc-card-body code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+.pc-msg-body :not(pre) > code, .pc-card-body :not(pre) > code { padding: 1px 4px; border-radius: 4px; background: var(--fill-quinary, rgba(0, 0, 0, .05)); }
+.pc-msg-body math[display="block"], .pc-card-body math[display="block"] { display: block; overflow-x: auto; overflow-y: hidden; margin: 6px 0; padding: 2px 0; }
 .pc-msg-body a, .pc-card-body a { color: var(--pc-accent); }
+
+/* Tables: horizontal scroll with edge shadows when wider than the pane. */
+.pc-table {
+  --pc-table-bg: var(--material-sidepane, var(--material-background, #fff));
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 8px 0 10px;
+  background:
+    linear-gradient(to right, var(--pc-table-bg) 40%, transparent) left / 20px 100% no-repeat local,
+    linear-gradient(to left, var(--pc-table-bg) 40%, transparent) right / 20px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .16), transparent) left / 8px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .16), transparent) right / 8px 100% no-repeat scroll;
+}
+.pc-table table {
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: normal;
+}
+.pc-table th, .pc-table td {
+  padding: 5px 8px;
+  border: 1px solid var(--color-border, #d6d6d6);
+  text-align: start;
+  vertical-align: top;
+}
+.pc-table th { font-weight: 600; background: var(--fill-quinary, rgba(0, 0, 0, .04)); }
+.pc-table .pc-cell-short { white-space: nowrap; }
+.pc-table .pc-cell { max-width: 22em; }
 
 .pc-citation {
   font: inherit;
@@ -313,7 +349,7 @@
   align-items: flex-end;
   gap: 6px;
   padding: 6px;
-  border: 1px solid var(--material-border, #d6d6d6);
+  border: 1px solid var(--color-border, #d6d6d6);
   border-radius: 10px;
   background: var(--material-background, #fff);
 }
@@ -371,7 +407,7 @@
   padding: 0 8px;
   font-size: 11px;
   border-radius: 12px;
-  border: 1px solid var(--material-border, #d6d6d6);
+  border: 1px solid var(--color-border, #d6d6d6);
   background: transparent;
   color: var(--fill-secondary, #666);
   cursor: pointer;

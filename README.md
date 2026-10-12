@@ -13,7 +13,7 @@
 
 **论文问答**：在阅读器右侧栏的「论文助手」中提问。
 - 论文不超过上下文上限（默认约 15 万字符）时整篇发送。超出时保留开头几页、选区附近页和与问题相关的段落。
-- 回答中的 `[p.N]` 渲染为页码按钮，点击跳转。支持 Markdown、表格、KaTeX 公式。
+- 回答中的 `[p.N]`（以及 `[p.7-8]`、`[p.2, 5]`）渲染为页码按钮，点击跳转。支持 Markdown、KaTeX 公式和表格；表格比侧栏宽时横向滚动，不会把列挤成一字一行。
 - 「深度思考」开关：关闭时更快（首字约 3–8 秒），开启时更严谨（首字多等 10 秒以上）。
 - 空对话提供常用问题；Enter 发送，Shift+Enter 换行，正确处理中文输入法组字；失败的回答可「重试」。
 - 每篇论文一份对话，切换模型不丢上下文。「新对话」会把旧对话归档保存。
@@ -38,7 +38,7 @@
 
 ## 安装
 
-下载 [`dist/paper-companion-0.2.1.xpi`](dist/paper-companion-0.2.1.xpi)，在 Zotero → 工具 → 插件 → 齿轮 → Install Plugin From File 中选择该文件。之后 Zotero 会通过仓库里的 `updates.json` 自动更新。
+下载 [`dist/paper-companion-0.2.2.xpi`](dist/paper-companion-0.2.2.xpi)，在 Zotero → 工具 → 插件 → 齿轮 → Install Plugin From File 中选择该文件。之后 Zotero 会通过仓库里的 `updates.json` 自动更新。
 
 支持 Zotero 10.x。开发与实机验证使用 macOS 上的 Zotero 10.0.6。
 
@@ -48,6 +48,15 @@
 - 对话保存在 `<Zotero 数据目录>/paper-companion/<libraryID>_<key>/chat.json`，不会写入 Zotero 笔记或同步。
 - 诊断日志 `<Zotero 数据目录>/paper-companion/debug.log` 只记录事件、耗时和错误信息（不含论文、问题或回答内容），超过 256 KB 自动轮换。
 - CLI 引擎在插件独立的 runtime 目录中只读运行：Codex 使用 read-only sandbox，Claude Code 关闭工具与 MCP，OpenCode 拒绝所有权限。
+
+## 0.2.2
+
+修复侧栏回答的 Markdown 显示：
+
+- 部分回答显示成一整段原始文本（`###`、`**`、`$` 原样出现、没有换行）。原因是 Zotero 主窗口是 XML 文档，原来用 `innerHTML` 解析 Markdown 生成的 HTML，回答里只要有单个换行（`<br>`）或分隔线（`<hr>`）就解析失败。现在改用 HTML 解析器。
+- 表格不再被挤成每行一个字：短单元格（名称、数字、表头）不换行，长单元格按内容保留可读宽度；表格比侧栏宽时横向滚动，边缘有阴影提示，并保留列对齐。
+- 修复表格、输入框、模型选择框和设置页卡片的边框不显示（误把 Zotero 的边框简写变量当颜色使用）。
+- 调整标题、列表、行内代码、分隔线和公式的间距；支持五、六级标题和上下标。万一渲染失败，也会保留原文换行。
 
 ## 0.2.1
 

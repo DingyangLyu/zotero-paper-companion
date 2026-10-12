@@ -6,6 +6,7 @@ node_modules/
 dist/*
 !dist/paper-companion-0.2.0.xpi
 !dist/paper-companion-0.2.1.xpi
+!dist/paper-companion-0.2.2.xpi
 !dist/SHA256SUMS
 dist/*-dev.xpi
 # Local Zotero diagnostics, backups and installation helpers
