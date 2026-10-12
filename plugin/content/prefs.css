@@ -1,0 +1,43 @@
+/* Paper Companion — Zotero Settings pane. */
+.pcs {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-size: 13px;
+  max-width: 640px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-right: 8px;
+}
+.pcs h2 { font-size: 14px; margin: 0 0 8px; }
+.pcs-section { display: flex; flex-direction: column; gap: 10px; }
+.pcs-field { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; align-items: center; }
+.pcs-field > .pcs-hint { grid-column: 2; }
+.pcs-label { color: var(--fill-secondary, #555); }
+.pcs-hint { font-size: 12px; color: var(--fill-secondary, #777); margin: 0; }
+.pcs-warn { color: #b26b00; }
+.pcs-check { display: flex; align-items: center; gap: 6px; }
+.pcs input:not([type="checkbox"]), .pcs select { min-width: 0; width: 100%; padding: 3px 6px; }
+.pcs-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pcs-row > input { flex: 1; }
+.pcs-providers { display: flex; flex-direction: column; gap: 8px; }
+.pcs-provider, .pcs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--material-border, #ddd);
+  border-radius: 8px;
+}
+.pcs-provider { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.pcs-provider-info { flex: 1 1 260px; min-width: 0; }
+.pcs-provider-name { font-weight: 600; }
+.pcs-provider-info .pcs-hint { overflow-wrap: anywhere; }
+.pcs-result { flex-basis: 100%; font-size: 12px; overflow-wrap: anywhere; }
+.pcs-result:empty { display: none; }
+.pcs-ok { color: #1f7a3a; }
+.pcs-error { color: #c4342d; }
+.pcs-imports { display: flex; flex-direction: column; gap: 8px; }
+.pcs-imports:empty { display: none; }
+.pcs button.pcs-primary { font-weight: 600; }
+.pcs button.pcs-danger { color: #c4342d; }

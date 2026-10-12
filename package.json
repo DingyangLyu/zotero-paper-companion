@@ -1,11 +1,12 @@
 {
   "name": "zotero-paper-companion",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "check": "node scripts/check.cjs && npm test",
-    "build": "node scripts/build.cjs"
+    "build": "node scripts/build.cjs",
+    "build:dev": "node scripts/build.cjs --dev"
   },
   "engines": {
     "node": ">=24"

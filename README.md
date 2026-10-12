@@ -1,74 +1,78 @@
 # Paper Companion · Zotero 论文助手
 
-作者：**dingyanglyu**。
+作者：**dingyanglyu**。Zotero 10 阅读器插件：PDF 划词即时翻译 + 基于整篇论文的问答。
 
-独立的 Zotero 10 阅读器插件：在 PDF 旁边进行划词翻译和论文问答，支持切换 Codex、Claude Code、OpenCode 或自定义 API。
+## 功能
 
-## 已实现
+**划词翻译**：在 PDF 中选中文字，Zotero 原生弹窗下方直接出现译文。无需点击；结果流式显示，通常 2–5 秒完成。
+- 单词/短语给出「本文语境下的译法 + 一句话含义」；句子和段落只输出译文。
+- 选区所在段落及前后段落作为消歧上下文。读取不到时不阻塞，直接翻译。
+- 卡片上的操作：**复制**、**重译**、**解释**（把选区带到右侧并立即解释）、**提问**（带到右侧，由你输入问题）。顶部可直接切换翻译模型。
+- 同一选区的译文会缓存。Zotero 重新渲染弹窗时会接回正在进行的翻译，不会重新请求。关闭弹窗 1.5 秒后取消未完成的请求。
+- 安装了 Translate for Zotero 时，可在同一弹窗里隐藏它的翻译区（可在设置中关闭）。
 
-- 右侧论文助手：顶部明确显示引擎和模型下拉框、配置及新对话；聊天区顶部放置可展开的“本次引用的上下文”，显示段落/页数并提供页码跳转；底部合并输入框和发送/停止操作。空闲时不显示“就绪”或常驻说明，选区操作仅在选中原文后出现。
-- 模型下拉框显示已配置的模型名称，未指定时显示“引擎默认”；Codex 可从本机模型目录中选择。所有引擎均可选择“自定义模型…”输入模型名称，切换引擎时保留各自设置。
-- 划词弹窗直接显示译文：选择一个词、多个词或一段文字后点击“翻译”，原位查看流式结果、复制、停止或重新翻译。附近段落用于消歧，可展开检查实际引用原文；“提问”继续把选区带到右侧聊天。弹窗可切换引擎，模型及 API 沿用该引擎配置。
-- 同一篇论文、同一选区与相同模型/上下文的译文在本次阅读期间缓存于内存，重复查看无需重新推理；重新翻译会绕过缓存。关闭弹窗、重新划词、切换论文或禁用插件时取消旧请求，迟到结果不会覆盖新选区。
-- 如果同时安装 Translate for Zotero，仅在新划词弹窗中隐藏其旧翻译区域，避免 CNKI 报错占位；保留 Zotero 原生标注控件，旧插件的其他入口不变。
-- 默认取选区所在段落及前后各一段，可改成各两段；用页码和段落坐标区分同页重复术语。跨段、跨页选区可保留相邻上下文；定位失败会明确提示并退回所选原文。
-- 本机用 Zotero 10 的 SDT 读取逻辑段落和 PDF 坐标；SDT 无法读取时可使用已安装的 pdftotext。扫描件没有 OCR 文字时提示先 OCR。
-- 短论文可作为有界全文提供给 QA；长文结合关键词和分布式段落取样，最多约 60000 字符。界面中的“本次引用的上下文”可检查实际发送范围；长文取样不保证覆盖所有证据，优先使用划词 QA。
-- Markdown 标题、列表、表格、引用、代码及 KaTeX 公式。支持 `$...$`、`$$...$$`、`\(...\)`、`\[...\]`、equation / align / aligned / gather。无法解析的公式保留 TeX 源码。
-- 回答中的 `[p.N]` 或 `[来源](paper://page/N)` 可跳回当前 PDF 的物理第 N 页。链接仅对本次实际提供的页面生效。网页链接经用户点击打开系统浏览器。
+**论文问答**：在阅读器右侧栏的「论文助手」中提问。
+- 论文不超过上下文上限（默认约 15 万字符）时整篇发送。超出时保留开头几页、选区附近页和与问题相关的段落。
+- 回答中的 `[p.N]` 渲染为页码按钮，点击跳转。支持 Markdown、表格、KaTeX 公式。
+- 「深度思考」开关：关闭时更快（首字约 3–8 秒），开启时更严谨（首字多等 10 秒以上）。
+- 空对话提供常用问题；Enter 发送，Shift+Enter 换行，正确处理中文输入法组字；失败的回答可「重试」。
+- 每篇论文一份对话，切换模型不丢上下文。「新对话」会把旧对话归档保存。
+
+## 模型服务
+
+在 **Zotero → 设置 → 论文助手** 中管理：
+
+| 类型 | 说明 |
+| --- | --- |
+| Anthropic Messages 兼容 API | 例如 Kimi K3（`https://api.kimi.com/coding/v1`，模型 `k3`）。翻译请求会关闭 thinking 以加快速度 |
+| OpenAI Chat Completions 兼容 API | DeepSeek、OpenRouter、本机 vLLM/Ollama 等 |
+| OpenAI Responses API | |
+| Codex / Claude Code / OpenCode CLI | 本机 Agent，只读运行；每次调用都要启动完整进程，通常 10–30 秒 |
+
+- **从 OpenCode 导入**：读取 `~/.config/opencode/opencode.json(c)` 中带 `baseURL` 和 `apiKey` 的服务，一键导入。
+- 每个服务都有「测试」按钮，会显示耗时和返回内容，或可读的错误原因（Key 无效、地址错误、限流等）。
+- API Key 存在 Zotero 的密码管理器（Mozilla Login Manager），不写入偏好设置或对话记录。
+- 0.1.x 的引擎配置在首次启动时自动迁移。本机 CLI 路径失效（如 nvm 升级）时会自动重新检测。
 
 ## 安装
 
-交付文件：`dist/paper-companion-0.1.7.xpi`。
+下载 [`dist/paper-companion-0.2.0.xpi`](dist/paper-companion-0.2.0.xpi)，在 Zotero → 工具 → 插件 → 齿轮 → Install Plugin From File 中选择该文件。之后 Zotero 会通过仓库里的 `updates.json` 自动更新。
 
-Zotero → 工具（Tools）→ 插件（Plugins）→ 齿轮 → Install Plugin From File，选择 XPI。打开一份 PDF，在右侧栏选择“论文助手”。安装后已打开的 PDF 如果暂未显示划词入口，重新打开该 PDF 标签页即可。
+支持 Zotero 10.x。开发与实机验证使用 macOS 上的 Zotero 10.0.6。
 
-声明支持 Zotero 10.0.*；开发与原生检查使用 macOS Zotero 10.0.4。没有声明 Zotero 7/8/9 或 Windows 已通过验证。本版手动安装/更新，没有自动更新服务。
+## 数据与隐私
 
-## 配置
+- 只有在翻译或提问时才会调用模型。发送内容为选区、上下文段落或论文文本，不上传 PDF 文件。
+- 对话保存在 `<Zotero 数据目录>/paper-companion/<libraryID>_<key>/chat.json`，不会写入 Zotero 笔记或同步。
+- CLI 引擎在插件独立的 runtime 目录中只读运行：Codex 使用 read-only sandbox，Claude Code 关闭工具与 MCP，OpenCode 拒绝所有权限。
 
-在弹窗或侧栏点击“配置”（配置表单显示在侧栏）。插件启动时会自动发现已安装的 Codex、Claude Code 和 OpenCode；手动填写的路径会保留。
+## 0.2.0 相比 0.1.x 的变化
 
-- **Codex / Claude Code / OpenCode**：选择本机已有的可执行文件，或输入绝对路径。Codex 模型可从“刷新模型”读取的本机目录中选择；留空时读取目录推荐的默认模型，不再直接继承全局配置中的模型名。Claude Code / OpenCode 可填写模型名称，留空沿用自身默认设置。CLI 使用自身已有的登录、提供商和 API 配置；插件不下载 CLI、不修改其全局配置。右侧顶部的模型下拉框可随时更改，也可选择“自定义模型…”手动输入；忙碌时锁定。
-- **自定义 API**：点击“添加自定义 API”，填写显示名称、Base URL、模型和 API Key。支持 OpenAI Chat Completions 兼容接口、Responses、Anthropic Messages。Base URL 应为服务 API 根地址，例如 `https://api.example.com/v1`；本机 `http://127.0.0.1:.../v1` 也可使用。
-- API Key 保存在 Mozilla Login Manager，普通偏好与聊天记录中不保存密钥。留空保留已存密钥；“清除已保存的 API Key”可删除当前接口密钥。
-- 可设置翻译/回答语言及附近段落数量。
+0.1.x 只能调用本机 Agent CLI。实测 Codex 回复一个「OK」就要约 22 秒，OpenCode 约 10 秒，而且不流式输出。划词后还要手动点「翻译」。弹窗被 Zotero 重新渲染时，正在进行的翻译会被丢弃。侧栏按钮多、设置挤在侧栏里，使用体验很差。0.2.0 重写为：
 
-## 数据与执行
+- 以直连 API 为主路径（流式；翻译关闭 thinking）。CLI 保留为备选，在模型列表中排在后面。
+- 选区即翻译；翻译任务与弹窗 DOM 分离，弹窗重绘不再中断翻译。
+- 设置移到 Zotero 设置页；侧栏只保留模型、深度思考、新对话和设置。
+- 问答默认整篇论文作为上下文（0.1.x 为最多 6 万字符的抽样）。
+- 代码按模块重写，便于维护：`core`（提示词与上下文）、`providers`（API/CLI）、`services`（Zotero 数据）、`popup`、`sidebar`、`settings`。
 
-只有点击翻译、发送问题时才调用引擎，选区和实际引用段落会由该引擎交给其模型提供商。打开侧栏、切换论文或配置引擎不会发起模型请求。
-
-聊天记录保存在 Zotero 数据目录的 `paper-companion/<libraryID>_<attachmentKey>/<engineID>.json`，不会自动写入 Zotero 笔记、批注或同步服务。本文原始 PDF 不会自动上传到聊天接口。CLI 获得文字上下文，工作目录为插件的独立 runtime 目录；Codex 使用 read-only sandbox，Claude Code 关闭内置工具/MCP，OpenCode 使用禁止工具的权限配置。CLI 用户自身的登录和机器配置仍由 CLI 管理。
-
-Codex 使用 `exec --json`；Claude Code 使用 `--print --output-format stream-json`；OpenCode 使用 `run --pure --format json`。每轮通过本机记录恢复文字对话；本版没有持久的 agent-server 会话、工具授权卡片、图片 QA 或全篇排版翻译。
-
-## 开发与验证
+## 开发
 
 ```sh
 npm ci
-npm run check
-npm run build
+npm run check      # 语法检查 + 单元测试
+npm run build      # 生成 dist/paper-companion-<版本>.xpi、SHA256SUMS、updates.json
 ```
 
-运行时源码在 `plugin/`；测试在 `tests/`；构建工具在 `scripts/`。XPI 只包含运行时文件。
+`npm run build:dev` 生成 `-dev.xpi`。它额外包含 `dev/devbridge.js`：一个仅限本机、需令牌的 Zotero 内部测试端点，令牌每次启动重新生成，并写入 `<Zotero 数据目录>/paper-companion/.devbridge-token`（600 权限）。安装 dev 版后：
 
-本次 43 项测试涵盖上下文定位和限幅、跨段选择、请求结构、分块 UTF-8 流式输出、错误处理、公式与不可信 HTML、引用链接、论文切换、迟到结果、侧栏发送和弹窗内翻译。另覆盖模型选择、面板可用高度、尺寸变化和销毁清理，以及原生滚动入口。
+```sh
+dev/zeval.sh 'return Zotero.version'   # 在 Zotero 内执行 JS
+dev/reload.sh                           # 重新构建并热重载插件
+```
 
-本地验证报告记录 Zotero 10.0.4 的原生检查：最终 XPI 解析、真实 PDF 的段落/坐标提取、原生 MathML 渲染和三种引擎协议的合成本地管道。早期合成管道验证使用测试进程；最终 0.1.3 验证已通过 Zotero 内的 Codex 实际发送选区翻译和论文 QA。0.1.3 已安装并启用，真实侧栏检查通过：三引擎切换均为就绪，本机路径候选、自定义 API 三协议表单、选区草稿和聊天控件均正常。Codex 的真实选区翻译和 QA 已验证：samples 翻译为“样本”，使用了同页附近段落，回答中的 LaTeX 公式与页码引用已渲染。页码跳转由用户确认正常。0.1.5 另已通过 OpenCode 的真实弹窗翻译；Claude Code 和自定义 API 的真实推理连通性尚未逐一验证。
+发布版 XPI 不包含该端点。
 
-## 参考与复用
+## 第三方组件
 
-- 参考 [LMMs-Lab Writer](https://github.com/DingyangLyu/lmms-lab-writer) 的引擎/模型入口、选区引用、聊天记录和公式呈现结构，主体为独立实现。
-- `dingdinglz/zotero-translate` 和 `andrepaim/pdfpal` 用作流程参考；未直接复制其无明确许可证的业务源码。
-- 复用 KaTeX 0.18.4 与 marked 18.0.14，均保留 MIT 许可证。KaTeX 通过显式导出 bundle 适配 Zotero 的脚本作用域，生成原生 MathML。
-- Zotero 生命周期、Reader 事件、Item Pane 和文本接口依照官方文档和本机 10.0.4 源码核对。
-
-模型目录通过本机 Codex app-server 的 `model/list` 查询；只读取模型元数据，不创建对话或发送提示词。官方接口说明：https://developers.openai.com/codex/app-server/ 。
-
-0.1.5 已修复阅读器脚本环境无法读取观察器参数的问题：DOM 仍使用官方 Reader 事件提供的文档，观察器、请求取消、计时器与网络 IO 使用 Zotero 主窗口。最终 XPI 已由 Zotero 10.0.4 原生解析并安装；真实 PDF 划词已显示新弹窗，旧 CNKI 弹窗区域已隐藏。真实 OpenCode 请求已完成：在 PDF 第 4 页选中 abductive 后，译文“溯因（推理）”及基于附近段落的解释直接显示在弹窗；没有新增侧栏翻译消息。原生标注颜色和高亮/下划线控件保留，译文可滚动，复制与上下文入口正常显示。
-
-0.1.6 完成侧栏布局优化，40 项检查通过，包括模型选择/自定义模型在各引擎间的保存与请求应用，以及新对话清除旧引用上下文。使用运行时 UI 和样式生成的独立预览已检查下拉菜单、上下文展开和紧凑输入区。已在 Zotero 完全退出时备份并替换为 0.1.6，重新启动后 Zotero 识别版本为 0.1.6，active: true、userDisabled: false、appDisabled: false；安装文件与交付 XPI 的 SHA-256 一致。原生界面控制仍超时，实际侧栏布局尚待现场验证；0.1.5 的原生界面验证记录仅适用于该版本。
-
-0.1.7 修复真实 Zotero 侧栏的尺寸问题：自定义区正文采用 inline-size containment，避免长论文标题撑大原生 Flex 容器；内部控件设置收缩边界，选区和长文本可换行。聊天区高度按面板剩余空间调整，尺寸及滚动观察器在销毁时清理。打开论文助手直接使用原生 scrollToPane，避免合成点击 detail=0 无法滚动到目标区。
-
-最终 0.1.7 XPI 在 Zotero 10.0.4 原生解析 error: 0、compatible: true、appDisabled: false，已安装启用，安装文件与交付文件的 SHA-256 一致。原生 DOM 测量复现旧版侧栏 390 px / 插件 716 px 溢出，并验证修复后的内容宽度 359 px。原生面板尺寸检查覆盖约 320、487、390 px；引擎、模型、配置、新对话、发送与输入框均位于边界内，窗口 resize 后输入区未超出可见底边，检查后恢复原始宽度。多显示器环境下鼠标拖动坐标工具失败，尺寸变化通过原生面板属性及窗口 resize 事件检查，没有额外调用模型。
+KaTeX 0.18.4、marked 18.0.14，均为 MIT 许可证，见 `THIRD_PARTY_NOTICES.md`。

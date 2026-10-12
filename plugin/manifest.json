@@ -1,15 +1,19 @@
 {
   "manifest_version": 2,
   "name": "Paper Companion · 论文助手",
-  "version": "0.1.7",
-  "description": "划词上下文翻译、论文问答和可切换本地 Agent / API 的阅读器侧栏",
+  "version": "0.2.0",
+  "description": "PDF 划词即时翻译与论文问答；支持 Anthropic / OpenAI 兼容 API，以及本机 Codex、Claude Code、OpenCode",
   "author": "dingyanglyu",
+  "icons": {
+    "48": "content/icon.svg",
+    "96": "content/icon.svg"
+  },
   "applications": {
     "zotero": {
       "id": "paper-companion@yuanbai.local",
-      "update_url": "https://example.invalid/plugin/updates.json",
+      "update_url": "https://raw.githubusercontent.com/DingyangLyu/zotero-paper-companion/main/updates.json",
       "strict_min_version": "10.0",
-      "strict_max_version": "10.0.*"
+      "strict_max_version": "10.*"
     }
   }
 }

@@ -1,5 +1,5 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const {JSDOM}=require('jsdom');
-global.PaperCore=require('../plugin/content/core.js');global.marked=require('marked').marked;global.katex=require('../plugin/content/vendor/katex/katex.min.js');const Render=require('../plugin/content/render.js');
+global.PCCore=require('../plugin/content/core.js');global.marked=require('marked').marked;global.katex=require('../plugin/content/vendor/katex/katex.min.js');const Render=require('../plugin/content/render.js');
 function draw(text,options={}){const dom=new JSDOM('<div id="chat"></div>');const p=dom.window.document.querySelector('#chat');Render.render(dom.window.document,p,text,options);return p;}
 test('Markdown and all common LaTeX delimiters render native MathML',()=>{
  const p=draw('**结论**：$E=mc^2$\n\n$$\\frac{a}{b}$$\n\n\\(x_i\\) 与 \\[\\sum_{i=1}^n i\\]\n\n\\begin{equation}y=x^2\\end{equation}');

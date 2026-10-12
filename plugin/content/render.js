@@ -57,7 +57,7 @@
       if(!ALLOWED.has(name)){if(name==='img')target.append(doc.createTextNode(node.getAttribute('alt') || '[图片]'));return;}
       const element=doc.createElementNS(NS,name);target.append(element);
       if(name==='a') {
-        const link=g.PaperCore.parseLink(node.getAttribute('href'),pageCount,sources);
+        const link=g.PCCore.parseLink(node.getAttribute('href'),pageCount,sources);
         if(link.kind!=='blocked') {
           element.href=link.kind==='external'?link.url:'#';
           element.addEventListener('click',e=>{e.preventDefault();if(link.kind==='page')onPage(link.pageIndex);else onExternal(link.url);});
@@ -68,5 +68,5 @@
     for(const child of template.content.childNodes)copy(child,fragment);
     parent.replaceChildren(fragment);
   }
-  const api={protectMath,mathNode,render};g.PaperRender=api;if(typeof module!=='undefined')module.exports=api;
+  const api={protectMath,mathNode,render};g.PCRender=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

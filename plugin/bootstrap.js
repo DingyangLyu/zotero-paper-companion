@@ -1,14 +1,34 @@
-var PaperCompanionPlugin;
+var PaperCompanion;
+
+const SCRIPTS = ['vendor/katex/runtime.js', 'vendor/marked.js', 'core.js', 'providers.js', 'services.js', 'render.js',
+  'popup.js', 'sidebar.js', 'settings.js', 'main.js'];
+
 async function startup({id, version, rootURI}) {
   await Zotero.uiReadyPromise;
-  for (const file of ['vendor/katex/runtime.js','vendor/marked.js','core.js','engines.js','render.js','native.js','popup.js','layout.js','main.js']) {
-    Services.scriptloader.loadSubScriptWithOptions(rootURI+'content/'+file,{ignoreCache:true});
+  for (const file of SCRIPTS) {
+    Services.scriptloader.loadSubScriptWithOptions(rootURI + 'content/' + file, {ignoreCache: true});
   }
-  await PaperCompanionPlugin.init({id,version,rootURI});
-  PaperCompanionPlugin.addToAllWindows();
+  await PaperCompanion.init({id, version, rootURI});
+  PaperCompanion.addToAllWindows();
+  // Development builds only: a token-protected local test endpoint.
+  try {
+    Services.scriptloader.loadSubScriptWithOptions(rootURI + 'content/devbridge.js', {ignoreCache: true});
+  } catch (_) {}
 }
-function onMainWindowLoad({window}) {PaperCompanionPlugin?.addToWindow(window);}
-function onMainWindowUnload({window}) {PaperCompanionPlugin?.removeFromWindow(window);}
-async function shutdown() {await PaperCompanionPlugin?.shutdown();PaperCompanionPlugin=undefined;}
+
+function onMainWindowLoad({window}) {
+  PaperCompanion?.addToWindow(window);
+}
+
+function onMainWindowUnload({window}) {
+  PaperCompanion?.removeFromWindow(window);
+}
+
+async function shutdown() {
+  globalThis.PCDevBridge?.stop();
+  await PaperCompanion?.shutdown();
+  PaperCompanion = undefined;
+}
+
 function install() {}
 function uninstall() {}
