@@ -268,6 +268,19 @@
 .pc-msg-meta .pc-link { font-size: 11px; padding: 0 4px; }
 .pc-msg-error { margin-top: 4px; font-size: 12px; color: #c4342d; white-space: pre-wrap; }
 
+/* Quote, status and composer stick to the bottom of the item pane. */
+.pc-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 2px;
+  background: var(--material-sidepane, var(--material-background, #fff));
+}
+
 .pc-quote {
   flex-shrink: 0;
   padding: 6px 8px;
@@ -330,11 +343,14 @@
 
 .pc-foot {
   flex-shrink: 0;
-  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
   color: var(--fill-secondary, #666);
+  background: var(--fill-quinary, rgba(0, 0, 0, .05));
   overflow-wrap: anywhere;
 }
-.pc-foot[data-kind="error"] { color: #c4342d; }
+.pc-foot[data-kind="error"] { color: #c4342d; background: color-mix(in srgb, #c4342d 10%, transparent); }
 .pc-muted { color: var(--fill-secondary, #777); }
 
 .pc-spinner {

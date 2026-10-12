@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Paper Companion · 论文助手",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "PDF 划词即时翻译与论文问答；支持 Anthropic / OpenAI 兼容 API，以及本机 Codex、Claude Code、OpenCode",
   "author": "dingyanglyu",
   "icons": {

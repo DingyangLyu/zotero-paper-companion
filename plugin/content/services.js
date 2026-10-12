@@ -230,7 +230,7 @@
     const errors = (async () => { while (await proc.stderr.readString()); })().catch(() => {});
     try {
       await proc.stdin.write(JSON.stringify({id: 1, method: 'initialize',
-        params: {clientInfo: {name: 'paper_companion', title: 'Paper Companion', version: '0.2.0'}}}) + '\n');
+        params: {clientInfo: {name: 'paper_companion', title: 'Paper Companion', version: g.Zotero.PaperCompanion?.version || '0.2'}}}) + '\n');
       return await pending;
     } finally {
       win.clearTimeout(timer);
@@ -307,6 +307,20 @@
     const rect = block.anchor?.pageRects?.find(r => Array.isArray(r) && r[0] === pageIndex && r.length === 5)?.slice(1) ||
       block.source?.rect || block.position?.rects?.[0];
     return {text, pageIndex, index, rect};
+  }
+
+  // Zotero's structured-text calls take no AbortSignal; bound them so a stuck
+  // call falls back to pdftotext (or stops) instead of hanging the chat.
+  function guard(promise, ms, signal, message) {
+    return new Promise((resolve, reject) => {
+      const timer = g.setTimeout(() => reject(new Error(message)), ms);
+      const abort = () => reject(new Error('已停止'));
+      signal?.addEventListener('abort', abort, {once: true});
+      promise.then(resolve, reject).finally(() => {
+        g.clearTimeout(timer);
+        signal?.removeEventListener('abort', abort);
+      });
+    });
   }
 
   const packs = new Map();
@@ -388,19 +402,20 @@
     if (papers.has(key)) return papers.get(key);
     let result = null;
     try {
-      const state = await sdtPack(identity);
+      const state = await guard(sdtPack(identity), 45000, signal, 'Zotero 结构化文本超时');
       if (state?.pageCount) {
         if (state.pageCount > 1000) throw new Error('论文超过 1000 页');
         const blocks = [];
         for (let i = 0; i < state.pageCount; i++) {
           if (signal?.aborted) throw new Error('已停止');
-          blocks.push(...await sdtPage(state, i));
+          blocks.push(...await guard(sdtPage(state, i), 20000, signal, `第 ${i + 1} 页结构化文本超时`));
         }
         if (blocks.length) result = {blocks, pageCount: state.pageCount};
       }
     } catch (e) {
       if (signal?.aborted) throw e;
-      g.Zotero.debug('Paper Companion: SDT unavailable, falling back to pdftotext: ' + e);
+      packs.delete(key);
+      log('sdt-fallback', {paper: identity.key, error: e?.message || String(e)});
     }
     if (!result) result = await pdftotextBlocks(identity, win, signal);
     if (!result.blocks.length) throw new Error('PDF 没有可提取的文字；扫描件需先 OCR');
@@ -415,10 +430,10 @@
     const cached = papers.get(identity.key + ':' + identity.hash);
     if (cached) return cached.blocks;
     try {
-      const state = await sdtPack(identity);
+      const state = await guard(sdtPack(identity), 45000, signal, 'Zotero 结构化文本超时');
       if (state?.pageCount) {
         const pages = [pageIndex - 1, pageIndex, pageIndex + 1].filter(i => i >= 0 && i < state.pageCount);
-        const blocks = (await Promise.all(pages.map(i => sdtPage(state, i)))).flat();
+        const blocks = (await guard(Promise.all(pages.map(i => sdtPage(state, i))), 20000, signal, '结构化文本超时')).flat();
         if (blocks.length) return blocks;
       }
     } catch (e) {
@@ -453,6 +468,27 @@
       }
     } catch (_) {}
     return [];
+  }
+
+  // Local diagnostics: event names, timings and error messages only — never
+  // paper text, questions or answers. Rotated at 256 KB.
+  let logChain = Promise.resolve();
+  function log(event, data = {}) {
+    let line;
+    try {
+      line = C().redact(JSON.stringify({time: new Date().toISOString(), event, ...data})).slice(0, 2000) + '\n';
+    } catch (_) {
+      return;
+    }
+    logChain = logChain.then(async () => {
+      const path = g.PathUtils.join(storageRoot(), 'debug.log');
+      try {
+        if ((await g.IOUtils.stat(path)).size > 262144) await g.IOUtils.move(path, path + '.1');
+      } catch (_) {}
+      await g.IOUtils.makeDirectory(storageRoot(), {ignoreExisting: true, createAncestors: true});
+      await g.IOUtils.writeUTF8(path, line, {mode: 'appendOrCreate'});
+    }).catch(() => {});
+    return logChain;
   }
 
   async function saveChat(key, messages) {
@@ -494,7 +530,7 @@
     PREFIX, pref, setPref, cleanProvider, migrateEngines, providers, saveProviders, provider, upsertProvider,
     removeProvider, newProviderID, modelChoices, resolveModel, chooseModel, keyFor, saveKey, executablePaths,
     discoverCLIs, runtimePath, codexModels, opencodeCandidates, importCandidate, getReader, paperIdentity,
-    readPaper, readAround, loadChat, saveChat, archiveChat, workdir, runOptions, clearCaches,
+    readPaper, readAround, loadChat, saveChat, archiveChat, workdir, runOptions, clearCaches, log,
   };
   g.PCServices = api;
   if (typeof module !== 'undefined') module.exports = api;

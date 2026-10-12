@@ -37,11 +37,15 @@
     const addText=(target,value,code)=>{
       if(code){target.append(doc.createTextNode(value));return;}
       let offset=0;
-      for(const match of value.matchAll(/\[p\.(\d+)\]/gi)) {
+      // [p.3], and also ranges/lists the models like to write: [p.7-8], [p.2, 5]
+      for(const match of value.matchAll(/\[p\.\s*(\d+(?:\s*[-–—,，;；]\s*(?:p\.\s*)?\d+)*)\]/gi)) {
         target.append(doc.createTextNode(value.slice(offset,match.index)));
-        const page=Number(match[1]);
-        if(page<=pageCount && sources.includes(page)) {
-          const button=doc.createElementNS(NS,'button');button.type='button';button.className='pc-citation';button.textContent='第 '+page+' 页';button.addEventListener('click',()=>onPage(page-1));target.append(button);
+        const parts=[...match[1].matchAll(/(\d+)(?:\s*[-–—]\s*(?:p\.\s*)?(\d+))?/gi)].map(x=>({page:Number(x[1]),end:x[2]?Number(x[2]):null}));
+        if(parts.length && parts.every(x=>x.page<=pageCount && sources.includes(x.page) && (x.end===null || (x.end>=x.page && x.end<=pageCount)))) {
+          parts.forEach(({page,end},i)=>{
+            if(i)target.append(doc.createTextNode(' '));
+            const button=doc.createElementNS(NS,'button');button.type='button';button.className='pc-citation';button.textContent='第 '+page+(end&&end!==page?'–'+end:'')+' 页';button.addEventListener('click',()=>onPage(page-1));target.append(button);
+          });
         } else target.append(doc.createTextNode(match[0]));
         offset=match.index+match[0].length;
       }
