@@ -1,7 +1,7 @@
 var PaperCompanion;
 
 const SCRIPTS = ['vendor/katex/runtime.js', 'vendor/marked.js', 'core.js', 'providers.js', 'services.js', 'render.js',
-  'popup.js', 'sidebar.js', 'settings.js', 'main.js'];
+  'popup.js', 'sidebar.js', 'pdffit.js', 'settings.js', 'main.js'];
 
 async function startup({id, version, rootURI}) {
   await Zotero.uiReadyPromise;

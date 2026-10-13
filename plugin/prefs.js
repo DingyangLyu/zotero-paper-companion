@@ -6,3 +6,4 @@ pref('extensions.paper-companion.chatContextChars', 150000);
 pref('extensions.paper-companion.chatThinking', false);
 pref('extensions.paper-companion.translateModel', '');
 pref('extensions.paper-companion.chatModel', '');
+pref('extensions.paper-companion.fitPDFWidth', true);

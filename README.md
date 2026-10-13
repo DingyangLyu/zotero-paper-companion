@@ -20,6 +20,8 @@
 - 问题在发出的同时就写入磁盘。Zotero 重建侧栏（切换标签页、重新载入阅读器等）不会打断正在生成的回答，也不会丢失或覆盖已有消息。
 - 回答生成中再按 Enter 会保留输入并提示；模型 120 秒没有任何输出时自动中断并可「重试」。
 
+**阅读器**：右侧面板展开、收起、拖动宽度或窗口大小变化时，原本铺满宽度的 PDF 会按新宽度自动缩放，PDF 和右侧面板各占一栏，不用每次手动调整缩放。只作用于固定缩放比例（如 210%）的 PDF；Zotero「视图 → 适应页宽 / 自动缩放」模式本身就会自动适配，特意放大查看局部时也不会改动。可在设置中关闭。
+
 ## 模型服务
 
 在 **Zotero → 设置 → 论文助手** 中管理：
@@ -38,7 +40,7 @@
 
 ## 安装
 
-下载 [`dist/paper-companion-0.2.2.xpi`](dist/paper-companion-0.2.2.xpi)，在 Zotero → 工具 → 插件 → 齿轮 → Install Plugin From File 中选择该文件。之后 Zotero 会通过仓库里的 `updates.json` 自动更新。
+下载 [`dist/paper-companion-0.2.3.xpi`](dist/paper-companion-0.2.3.xpi)，在 Zotero → 工具 → 插件 → 齿轮 → Install Plugin From File 中选择该文件。之后 Zotero 会通过仓库里的 `updates.json` 自动更新。
 
 支持 Zotero 10.x。开发与实机验证使用 macOS 上的 Zotero 10.0.6。
 
@@ -48,6 +50,11 @@
 - 对话保存在 `<Zotero 数据目录>/paper-companion/<libraryID>_<key>/chat.json`，不会写入 Zotero 笔记或同步。
 - 诊断日志 `<Zotero 数据目录>/paper-companion/debug.log` 只记录事件、耗时和错误信息（不含论文、问题或回答内容），超过 256 KB 自动轮换。
 - CLI 引擎在插件独立的 runtime 目录中只读运行：Codex 使用 read-only sandbox，Claude Code 关闭工具与 MCP，OpenCode 拒绝所有权限。
+
+## 0.2.3
+
+- 右侧面板不再「盖住」PDF：Zotero 打开右侧面板时只会收窄阅读区，不会重新缩放固定比例（如 210%）的 PDF，页面右侧就被挡在面板下面，每次都要手动调整缩放。现在面板展开、收起、拖动宽度或窗口大小变化时，原本铺满宽度的 PDF 会按新宽度自动缩放（设置 → 论文助手 → 阅读器，可关闭）。
+- 划词「解释」「提问」打开右侧面板时，改用 Zotero 自己的面板接口。
 
 ## 0.2.2
 

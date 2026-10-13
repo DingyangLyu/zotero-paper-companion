@@ -3,9 +3,9 @@
     "paper-companion@yuanbai.local": {
       "updates": [
         {
-          "version": "0.2.2",
-          "update_link": "https://raw.githubusercontent.com/DingyangLyu/zotero-paper-companion/main/dist/paper-companion-0.2.2.xpi",
-          "update_hash": "sha256:808dc92fc608684cd72980eee7cbd78e76c8c24d227ab51f0ff34ae2f51f323b",
+          "version": "0.2.3",
+          "update_link": "https://raw.githubusercontent.com/DingyangLyu/zotero-paper-companion/main/dist/paper-companion-0.2.3.xpi",
+          "update_hash": "sha256:c4ad12f1c313d6b550c1ab6bcaf6436d8b348c6c1b6da943df09c9e560800ddf",
           "applications": {
             "zotero": {
               "strict_min_version": "10.0",

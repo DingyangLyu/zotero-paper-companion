@@ -16,6 +16,7 @@ var PaperCompanion = {
     this.styles = await Zotero.File.getResourceAsync(rootURI + 'content/style.css');
     this.popup = new PCPopup(this);
     this.chat = new PCChatPane(this);
+    this.pdfFit = new PCPDFFit();
     Zotero.PaperCompanion = this;
 
     PCServices.providers(); // migrates 0.1.x settings on first run
@@ -66,10 +67,12 @@ var PaperCompanion = {
     style.textContent = this.styles;
     win.document.documentElement.append(style);
     this.windows.set(win, {style});
+    this.pdfFit?.addWindow(win);
   },
 
   removeFromWindow(win) {
     this.chat?.destroyWindow(win);
+    this.pdfFit?.removeWindow(win);
     this.windows.get(win)?.style.remove();
     win.document.l10n?.removeResourceIds(['paper-companion.ftl']);
     this.windows.delete(win);
@@ -105,6 +108,8 @@ var PaperCompanion = {
       const details = [...win.document.querySelectorAll('item-details')]
         .find(e => e.tabID === reader.tabID || e.dataset.tabId === reader.tabID);
       if (!details) continue;
+      // Open through Zotero's own API so the reader is told to make room.
+      if (win.ZoteroContextPane && win.ZoteroContextPane.collapsed) win.ZoteroContextPane.collapsed = false;
       const parent = details.closest('context-pane, item-pane');
       if (parent && 'collapsed' in parent && parent.collapsed) parent.collapsed = false;
       if (typeof details.scrollToPane !== 'function') return;
@@ -127,6 +132,7 @@ var PaperCompanion = {
   async shutdown() {
     this.popup?.shutdown();
     this.chat?.shutdown();
+    this.pdfFit?.shutdown();
     for (const id of this.observers) Zotero.Prefs.unregisterObserver(id);
     this.observers = [];
     if (this.paneID) Zotero.ItemPaneManager.unregisterSection(this.paneID);

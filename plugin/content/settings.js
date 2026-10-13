@@ -81,6 +81,11 @@
       '论文不超过上限时整篇发送，超出时按问题挑选相关段落。本机 CLI 固定使用 6 万字符。'));
       chat.append(checkbox('问答默认开启深度思考（更严谨，但首字通常多等 10 秒以上；也可在侧栏随时切换）', 'chatThinking', false));
 
+      const reading = el('section', 'pcs-section');
+      reading.append(el('h2', null, '阅读器'));
+      reading.append(checkbox('右侧面板展开、收起或调整宽度时，自动缩放 PDF，保持铺满左侧的阅读区', 'fitPDFWidth', true));
+      reading.append(el('p', 'pcs-hint', '只作用于固定缩放比例且原本铺满宽度的 PDF；Zotero「视图 → 适应页宽 / 自动缩放」模式本身就会自动适配，特意放大查看局部时也不会改动。'));
+
       const providers = el('section', 'pcs-section');
       providers.append(el('h2', null, '模型服务'));
       providers.append(el('p', 'pcs-hint', 'API 服务直接流式返回，速度最快；本机 CLI 每次都要启动一个完整的 Agent，通常需要 10–30 秒。API Key 保存在 Zotero 的密码管理器里。'));
@@ -96,7 +101,7 @@
       );
       providers.append(tools);
       providers.append(importBox);
-      mount.append(translate, chat, providers);
+      mount.append(translate, chat, reading, providers);
     }
 
     function providerRow(p) {
